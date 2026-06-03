@@ -1,5 +1,5 @@
 from openai import OpenAI
-from models.responses import HealthResponse
+from schemas.responses import HealthResponse
 from dotenv import load_dotenv
 from core.logging import logger
 from core.config import settings
