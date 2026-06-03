@@ -1,5 +1,5 @@
 from core.logging import logger
-from models.responses import HealthResponse
+from schemas.responses import HealthResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 

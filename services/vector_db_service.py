@@ -1,6 +1,6 @@
 from qdrant_client import QdrantClient
 from core.logging import logger
-from models.responses import HealthResponse
+from schemas.responses import HealthResponse
 
 async def check_vector_db():
     try:
