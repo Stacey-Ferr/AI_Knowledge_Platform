@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 
 class HealthResponse(BaseModel):
     service: str
@@ -7,3 +8,5 @@ class HealthResponse(BaseModel):
 class AskResponse(BaseModel):
     answer: str
     processing_time: float
+    source: Optional[str] = 'llm'
+    cached: Optional[bool] = False
