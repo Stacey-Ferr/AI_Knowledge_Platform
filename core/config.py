@@ -74,6 +74,7 @@ class Settings(BaseSettings):
         "pdf",
         "txt",
         "docx",
+        "md"
     ]
 
 

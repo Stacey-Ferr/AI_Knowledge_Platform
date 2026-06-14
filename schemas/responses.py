@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
+from schemas.file import FileMetadata
 
 class HealthResponse(BaseModel):
     service: str
@@ -10,3 +11,6 @@ class AskResponse(BaseModel):
     processing_time: float
     source: Optional[str] = 'llm'
     cached: Optional[bool] = False
+
+class UploadResponse(BaseModel):
+    metadata: FileMetadata
