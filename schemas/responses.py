@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from schemas.file import FileMetadata
 
@@ -14,3 +14,7 @@ class AskResponse(BaseModel):
 
 class UploadResponse(BaseModel):
     metadata: FileMetadata
+
+class ErrorResponse(BaseModel):
+    error: str
+    warnings: list[str] = Field(default_factory=list)
