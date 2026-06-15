@@ -83,6 +83,7 @@ class UploadService:
             if file_type == "pdf":
                 with _capture_pdf_logs() as log_stream:
                     elements = self.partitioners.get(file_type)(file_path)
+                    # Running 'PdfReader(file_path)' to check if the PDF is corrupted
                     PdfReader(file_path)
                 # Capturing any warnings that may arise during PDF partitioning
                 logs = log_stream.getvalue()
@@ -115,7 +116,7 @@ class UploadService:
 
     def logging_warnings(self, logs):
         """
-        Checking the warnings that were seen during partitioning against a list of known warnings listed in 'KNOWN_WARNINGS'
+        Checking the logs that were seen during partitioning against a list of known warnings listed in 'KNOWN_WARNINGS' and checking if there is any indication of PDF corruption using the list of values in 'PDF_CORRUPTION_INDICATORS'. If the PDF is corrupted we raise an Exception.
         """
 
         warnings = [warning for warning in KNOWN_WARNINGS if warning in logs]
@@ -158,6 +159,7 @@ class UploadService:
 
             except Exception as cleanup_error:
                 logger.warning(f"Failed to delete file: {cleanup_error}")
+                # Added a warning field to the Exception as failure to delete the file is not the main Exception but also wanted to let the user know that file deletion failed.
                 if hasattr(e, "warnings"):
                     e.warnings.append(f"Failed to delete file: {cleanup_error}")
 
