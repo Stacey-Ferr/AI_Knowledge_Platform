@@ -9,10 +9,11 @@ from io import StringIO
 from core.exceptions import EmptyFileException, FileException
 from contextlib import contextmanager
 from schemas.file import (
-    WarningsInfo,
     FileMetadata,
     IngestionResult
 )
+from core.logging import logger
+from pypdf import PdfReader
 
 @contextmanager
 def _capture_pdf_logs():
@@ -21,24 +22,27 @@ def _capture_pdf_logs():
     """
     log_stream = StringIO()
     handler = logging.StreamHandler(log_stream)
-    pdf_logger = logging.getLogger("pdfminer")
-    pdf_logger.addHandler(handler)
+    pdfminer_logger = logging.getLogger("pdfminer")
+    pypdf_logger = logging.getLogger("pypdf")
+    pdfminer_logger.addHandler(handler)
+    pypdf_logger.addHandler(handler)
 
     try:
         yield log_stream
     finally:
-        pdf_logger.removeHandler(handler)
+        pdfminer_logger.removeHandler(handler)
+        pypdf_logger.removeHandler(handler)
 
-KNOWN_WARNINGS = {
-    "Data-loss while decompressing corrupted data":{
-        "issue":"Data-loss while decompressing corrupted data",
-        "type" : "warning"
-    },
-    "Could not get FontBBox from font descriptor because None cannot be parsed as 4 floats" : {
-        "issue" : "Could not get FontBBox from font descriptor because None cannot be parsed as 4 floats",
-        "type" : "warning"
-    }
-}
+KNOWN_WARNINGS = [
+    "Data-loss while decompressing corrupted data",
+    "Could not get FontBBox from font descriptor because None cannot be parsed as 4 floats"
+]
+
+PDF_CORRUPTION_INDICATORS = [
+    "incorrect startxref",
+    "Error -3 while decompressing data",
+    "found 0 objects within Object"
+]
 
 class UploadService:
 
@@ -79,7 +83,8 @@ class UploadService:
             if file_type == "pdf":
                 with _capture_pdf_logs() as log_stream:
                     elements = self.partitioners.get(file_type)(file_path)
-
+                    # Running 'PdfReader(file_path)' to check if the PDF is corrupted
+                    PdfReader(file_path)
                 # Capturing any warnings that may arise during PDF partitioning
                 logs = log_stream.getvalue()
             else:
@@ -88,7 +93,8 @@ class UploadService:
             return elements, logs
 
         except Exception as e:
-            raise FileException(f"An exception occurred: {e}", status_code=422) from e
+            logger.exception(f"Unable to process the file: {e}")
+            raise FileException(f"Unable to process the file: {e}", status_code=422) from e
 
     def extract_text(self, elements):
         """
@@ -110,12 +116,16 @@ class UploadService:
 
     def logging_warnings(self, logs):
         """
-        Checking the warnings that were seen during partitioning against a list of known warnings listed in 'KNOWN_WARNINGS'
+        Checking the logs that were seen during partitioning against a list of known warnings listed in 'KNOWN_WARNINGS' and checking if there is any indication of PDF corruption using the list of values in 'PDF_CORRUPTION_INDICATORS'. If the PDF is corrupted we raise an Exception.
         """
-        warnings = []
-        for warning, issue in KNOWN_WARNINGS.items():
-            if warning in logs:
-                warnings.append(WarningsInfo(**issue))
+
+        warnings = [warning for warning in KNOWN_WARNINGS if warning in logs]
+
+        pdf_corruption = [corruption_indicator for corruption_indicator in PDF_CORRUPTION_INDICATORS if corruption_indicator in logs]
+
+        if pdf_corruption:
+            raise FileException("PDF appears to be corrupted", status_code=422, warnings=warnings + pdf_corruption)
+
         return warnings
 
     async def process_file(self, file):
@@ -141,8 +151,16 @@ class UploadService:
             })
             return IngestionResult(**{"metadata":metadata, "extracted_text":extracted_text})
         
-        except Exception:
-            # Deletes the uploaded file incase any exception occurred during any stage of the upload process and then raises the Exception to the calling function
-            if file_path.exists():
-                file_path.unlink()
+        except Exception as e:
+            try:
+                # Deletes the uploaded file incase any exception occurred during any stage of the upload process and then raises the Exception to the calling function
+                if file_path.exists():
+                    file_path.unlink()
+
+            except Exception as cleanup_error:
+                logger.warning(f"Failed to delete file: {cleanup_error}")
+                # Added a warning field to the Exception as failure to delete the file is not the main Exception but also wanted to let the user know that file deletion failed.
+                if hasattr(e, "warnings"):
+                    e.warnings.append(f"Failed to delete file: {cleanup_error}")
+
             raise

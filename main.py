@@ -5,6 +5,7 @@ from api.routes.upload import router as upload_router
 from middleware.request_logger import RequestLoggingMiddleware
 from fastapi.responses import JSONResponse
 from core.exceptions import FileException
+from schemas.responses import ErrorResponse
 
 app = FastAPI()
 
@@ -18,7 +19,8 @@ app.add_middleware(RequestLoggingMiddleware)
 async def file_exception_handler(request, exc):
     return JSONResponse(
         status_code = exc.status_code,
-        content = {
-            "detail" : exc.message
-        }
+        content = ErrorResponse(
+            error = exc.message,
+            warnings = exc.warnings
+        ).model_dump()
     )
