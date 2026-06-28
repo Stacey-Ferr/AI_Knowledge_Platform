@@ -1,5 +1,4 @@
 from functools import lru_cache
-from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -43,6 +42,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str
     OPENAI_MODEL: str = "gpt-4o-mini"
     EMBEDDING_MODEL: str = "text-embedding-3-small"
+    EMBEDDING_MODEL_DIMENSIONS: int = 1536
 
 
     #-----------------------------------------------------------------
