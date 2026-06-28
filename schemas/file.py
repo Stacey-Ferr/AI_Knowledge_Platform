@@ -12,4 +12,3 @@ class FileMetadata(BaseModel):
 
 class IngestionResult(BaseModel):
     metadata: FileMetadata
-    extracted_text: str
