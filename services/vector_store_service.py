@@ -5,6 +5,8 @@ from core.config import settings
 from uuid import uuid4
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from core.logging import logger
+from core.exceptions import VectorStoreException
 
 class VectorStoreService:
     """
@@ -17,6 +19,7 @@ class VectorStoreService:
         """
         self.client = QdrantClient(host="localhost", port=6333, timeout=600)
         self.collection_name = "Documents"
+        self.batch_size = 250
 
         if not self.client.collection_exists(self.collection_name):
             self.client.create_collection(
@@ -34,7 +37,12 @@ class VectorStoreService:
         points = []
         embedding = OpenAIEmbeddingService()
         text = [chunk.text for chunk in final_chunks]
-        chunk_embeddings = embedding.embed_batch(text)
+        chunk_embeddings = []
+
+        for index in range(0, len(text), self.batch_size):
+            batch = text[index : index+self.batch_size]
+            chunk_embeddings.extend(embedding.embed_batch(batch))
+        
         for chunk, embedding in zip(final_chunks, chunk_embeddings):
             points.append(
                 PointStruct(
@@ -61,7 +69,15 @@ class VectorStoreService:
             points = points,
             wait = True
         )
-        print(operation_info)
 
+        logger.info(
+            "Upsert completed: operation_id=%s, status=%s",
+            operation_info.operation_id,
+            operation_info.status,
+        )
+
+        if operation_info.status != "completed":
+            raise VectorStoreException("Failed to upsert vectors into Qdrant.")
+    
     def search():
         pass

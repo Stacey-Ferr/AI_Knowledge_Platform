@@ -53,7 +53,7 @@ PDF_CORRUPTION_INDICATORS = [
 class IngestionService:
 
     partitioners = {
-        "pdf": lambda path: partition_pdf(filename = str(path), strategy="hi_res"),
+        "pdf": lambda path: partition_pdf(filename = str(path), strategy="fast"),
         "docx" : lambda path: partition_docx(filename = str(path)),
         "txt" : lambda path: partition_text(filename = str(path)),
         "md" : lambda path: partition_md(filename = str(path)),
@@ -91,7 +91,7 @@ class IngestionService:
                 with _capture_pdf_logs() as log_stream:
                     elements = self.partitioners.get(file_type)(file_path)
                     # Running 'PdfReader(file_path)' to check if the PDF is corrupted
-                    PdfReader(file_path)
+                    # PdfReader(file_path)
                 # Capturing any warnings that may arise during PDF partitioning
                 logs = log_stream.getvalue()
             else:
@@ -143,41 +143,37 @@ class IngestionService:
             # Reading and saving the file locally
             start = time.perf_counter()
             content_length = await self.save_file(file, file_path)
-            print(f"Saving File: {time.perf_counter() - start:.2f}s")
+            print(f"\nSaving File: {time.perf_counter() - start:.2f}s")
 
             # Partitioning the file
             start = time.perf_counter()
             elements, logs = self.partition_file(file_type, file_path)
-            print(f"Partitioning: {time.perf_counter() - start:.2f}s")
-
-            print("\nLength of elements: ", len(elements))
+            print(f"\nPartitioning: {time.perf_counter() - start:.2f}s")
 
             # Extracting text to check if the document is empty or contains only images
             start = time.perf_counter()
             self.extract_text(elements)
-            print(f"Extracting text: {time.perf_counter() - start:.2f}s")
+            print(f"\nExtracting text: {time.perf_counter() - start:.2f}s")
 
             # Executing Title chunking on the partitioned data
             start = time.perf_counter()
             chunks = chunk_by_title(elements, max_characters=1500, new_after_n_chars=1000, include_orig_elements=True)
-            print(f"Title chunking: {time.perf_counter() - start:.2f}s")
-
-            print("\nNumber of chunks: ", len(chunks))
+            print(f"\nTitle chunking: {time.perf_counter() - start:.2f}s")
 
             # Running Semantic chunking on the Title chunks
             start = time.perf_counter()
             # Passing a document_id for all the chunks, to help search for these particular vectors
             document_id = str(uuid4())
-            semantic_chunking = SemanticChunker(OpenAIEmbeddingService(), 0.70)
+            semantic_chunking = SemanticChunker(OpenAIEmbeddingService())
             final_chunks = semantic_chunking.chunking(chunks, document_id)
-            print(f"Semantic chunking: {time.perf_counter() - start:.2f}s")
+            print(f"\nSemantic chunking: {time.perf_counter() - start:.2f}s\n")
 
             # Creating vectors to store in qdrant vector store
             start = time.perf_counter()
             vector_service = VectorStoreService()
             points = vector_service.create_point_structures(final_chunks)
             vector_service.upsert(points)
-            print(f"Storing in qdrant vector store: {time.perf_counter() - start:.2f}s")
+            print(f"\nStoring in qdrant vector store: {time.perf_counter() - start:.2f}s\n")
 
             warnings = self.logging_warnings(logs)
 
@@ -194,13 +190,15 @@ class IngestionService:
         
         except Exception as e:
             try:
-                # Deletes the uploaded file incase any exception occurred during any stage of the upload process and then raises the Exception to the calling function
+                # Deletes the uploaded file incase any exception occurred during any stage of the upload 
+                # process and then raises the Exception to the calling function
                 if file_path.exists():
                     file_path.unlink()
 
             except Exception as cleanup_error:
                 logger.warning(f"Failed to delete file: {cleanup_error}")
-                # Added a warning field to the Exception as failure to delete the file is not the main Exception but also wanted to let the user know that file deletion failed.
+                # Added a warning field to the Exception as failure to delete the file is not the main 
+                # Exception but also wanted to let the user know that file deletion failed.
                 if hasattr(e, "warnings"):
                     e.warnings.append(f"Failed to delete file: {cleanup_error}")
 
