@@ -11,8 +11,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             duration = time() - start
 
             logger.info(f"{request.method}  {request.url.path}  {response.status_code}  {duration:.3f}s")
-            return response
 
         except Exception as e:
             logger.exception(f"Exception occured: {e}")
+            raise
 
+        return response
