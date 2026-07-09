@@ -135,7 +135,7 @@ class IngestionService:
 
         return warnings
 
-    async def process_file(self, file):
+    async def process_file(self, file, bm25_service):
         file_path = self.UPLOAD_DIR / file.filename
         file_type = Path(file.filename).suffix.lstrip(".").lower()
 
@@ -174,6 +174,11 @@ class IngestionService:
             points = vector_service.create_point_structures(final_chunks)
             vector_service.upsert(points)
             print(f"\nStoring in qdrant vector store: {time.perf_counter() - start:.2f}s\n")
+
+            # Builds a BM25 index for all the chunks
+            start = time.perf_counter()
+            bm25_service.build_index(final_chunks)
+            print(f"\nBuilding Index using BM25: {time.perf_counter() - start:.2f}s\n")
 
             warnings = self.logging_warnings(logs)
 

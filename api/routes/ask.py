@@ -3,11 +3,9 @@ from openai import OpenAI
 from core.config import settings
 from schemas.requests import AskRequest
 from schemas.responses import AskResponse
-from services.ask_service import ask
-from core.logging import logger
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from cache.dependencies import get_cache
+from dependencies.services import get_ask_service
 
 router = APIRouter()
 
@@ -22,9 +20,9 @@ limiter = Limiter(
 
 @router.post("/ask", response_model=AskResponse)
 @limiter.limit("10/hour")
-async def query(
+async def ask_query(
         request: Request,
         question: AskRequest,
-        cache_client = Depends(get_cache)
+        ask_service = Depends(get_ask_service)
     ):
-    return await ask(question.query, cache_client)
+    return await ask_service.ask(question.query)
