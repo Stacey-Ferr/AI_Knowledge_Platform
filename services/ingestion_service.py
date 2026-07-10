@@ -16,8 +16,6 @@ from core.logging import logger
 from pypdf import PdfReader
 from unstructured.chunking.title import chunk_by_title
 from chunking.semantic_chunker import SemanticChunker
-from services.embedding_service import OpenAIEmbeddingService
-from services.vector_store_service import VectorStoreService
 from uuid import uuid4
 import time
 
@@ -65,6 +63,11 @@ class IngestionService:
     # 'exist_ok=True' ignores if the folders already exist
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     
+    def __init__(self, embedding_service, vector_service, bm25_service):
+        self.embedding_service = embedding_service
+        self.vector_service = vector_service
+        self.bm25_service = bm25_service
+
     async def save_file(self, file, file_path):
         """
             Reads the file that was uploaded and saves the file locally on disk
@@ -135,7 +138,7 @@ class IngestionService:
 
         return warnings
 
-    async def process_file(self, file, bm25_service):
+    async def process_file(self, file):
         file_path = self.UPLOAD_DIR / file.filename
         file_type = Path(file.filename).suffix.lstrip(".").lower()
 
@@ -164,20 +167,19 @@ class IngestionService:
             start = time.perf_counter()
             # Passing a document_id for all the chunks, to help search for these particular vectors
             document_id = str(uuid4())
-            semantic_chunking = SemanticChunker(OpenAIEmbeddingService())
-            final_chunks = semantic_chunking.chunking(chunks, document_id)
+            semantic_chunker = SemanticChunker(self.embedding_service)
+            final_chunks = semantic_chunker.chunking(chunks, document_id)
             print(f"\nSemantic chunking: {time.perf_counter() - start:.2f}s\n")
 
             # Creating vectors to store in qdrant vector store
             start = time.perf_counter()
-            vector_service = VectorStoreService()
-            points = vector_service.create_point_structures(final_chunks)
-            vector_service.upsert(points)
+            points = self.vector_service.create_point_structures(final_chunks)
+            self.vector_service.upsert(points)
             print(f"\nStoring in qdrant vector store: {time.perf_counter() - start:.2f}s\n")
 
             # Builds a BM25 index for all the chunks
             start = time.perf_counter()
-            bm25_service.build_index(final_chunks)
+            self.bm25_service.build_index(final_chunks)
             print(f"\nBuilding Index using BM25: {time.perf_counter() - start:.2f}s\n")
 
             warnings = self.logging_warnings(logs)
