@@ -36,14 +36,14 @@ class Bm25Service:
         chunks_file = Path("storage/chunks.json")
         if chunks_file.exists():
             with chunks_file.open("r", encoding="utf-8") as f:
-                chunks = json.load(f)
+                stored_chunks = json.load(f)
         else:
-            chunks = []
+            stored_chunks = []
 
-        chunks.extend([chunk.model_dump(mode="json") for chunk in chunks])
+        stored_chunks.extend([chunk.model_dump(mode="json") for chunk in chunks])
 
         with open("storage/chunks.json", "w", encoding="utf-8") as f:
-            json.dump(chunks, f, indent = 2, ensure_ascii=False)
+            json.dump(stored_chunks, f, indent = 2, ensure_ascii=False)
 
     def retrieval(self, query):
         """

@@ -1,6 +1,5 @@
 from services.embedding_service import EmbeddingService
 from schemas.file_chunk import FileChunk
-from core.logging import logger
 import numpy as np
 import re
 
