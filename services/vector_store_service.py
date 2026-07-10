@@ -43,10 +43,12 @@ class VectorStoreService:
             batch = text[index : index+self.batch_size]
             chunk_embeddings.extend(embedding.embed_batch(batch))
         
+        uploaded_at = datetime.now(ZoneInfo("Asia/Kolkata"))
+
         for chunk, embedding in zip(final_chunks, chunk_embeddings):
             points.append(
                 PointStruct(
-                    id = str(uuid4()),
+                    id = str(chunk.id),
                     vector = embedding,
                     payload = {
                         "text": chunk.text,
@@ -55,7 +57,7 @@ class VectorStoreService:
                         "page_numbers": chunk.page_numbers,
                         "section_title": chunk.section_title,
                         "chunk_index": chunk.chunk_index,
-                        "uploaded_at": datetime.now(ZoneInfo("Asia/Kolkata"))
+                        "uploaded_at": uploaded_at
                     }
                 ))
         return points
@@ -79,5 +81,15 @@ class VectorStoreService:
         if operation_info.status != "completed":
             raise VectorStoreException("Failed to upsert vectors into Qdrant.")
     
-    def search():
-        pass
+    def search(self, query_embedding):
+        """
+            Searches the qdrant vector database for vectors that are close to the query vector.
+            This is a dense vector search that uses semantic searching.
+        """
+        matches = self.client.query_points(
+            collection_name = self.collection_name,
+            query = query_embedding,
+            limit = 10,
+        )
+
+        return matches

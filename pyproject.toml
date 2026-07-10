@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "bm25s>=0.3.9",
     "fastapi>=0.136.3",
     "libmagic>=1.0",
     "numpy>=2.4.6",
@@ -18,7 +19,9 @@ dependencies = [
     "python-multipart>=0.0.32",
     "qdrant-client>=1.18.0",
     "redis>=8.0.0",
+    "sentence-transformers>=5.6.0",
     "slowapi>=0.1.9",
+    "spacy>=3.8.13",
     "sqlalchemy>=2.0.50",
     "tenacity>=9.1.4",
     "tesseract>=0.1.3",

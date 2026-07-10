@@ -21,12 +21,13 @@ from core.exceptions import (
     LLMServiceUnavailableError
 )
 
-client = OpenAI(
-    api_key=settings.GEMINI_API_KEY,
-    base_url=settings.GEMINI_BASE_URL
-)
-
 class OpenAIProvider(BaseLLMProvider):
+    def __init__(self):
+        self.client = OpenAI(
+                        api_key=settings.GEMINI_API_KEY,
+                        base_url=settings.GEMINI_BASE_URL
+                    )
+
     @retry(
         stop = stop_after_attempt(3),
         wait = wait_exponential(
@@ -42,15 +43,24 @@ class OpenAIProvider(BaseLLMProvider):
             )
         )
     )
-    def generate(self, query: str):
+    async def generate(self, system_prompt: str, user_prompt: str):
+        """
+            Uses the system prompt and user prompt passed to the function to answer the user query.
+            Retries if the execution fails due to a RateLimitError, LLMTimeoutError, or an
+            LLMServiceUnavailableError. Maximum 3 re-attempts on failure.
+        """
         try:
             start_time = time()
-            response = client.chat.completions.create(
+            response = self.client.chat.completions.create(
                 model = "gemini-2.5-flash",
                 messages=[
                             {
+                                "role" : "system",
+                                "content" : system_prompt
+                            },
+                            {
                                 "role" : "user",
-                                "content" : query
+                                "content" : user_prompt
                             }
                         ]
             )
