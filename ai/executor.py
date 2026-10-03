@@ -1,5 +1,6 @@
 from ai.tools import ToolRegistry
 from typing import Any
+from opentelemetry import trace
 
 class ExecutionContext:
     """
@@ -21,19 +22,24 @@ class Executor:
     """
     def __init__(self, registry: ToolRegistry):
         self.registry = registry
+        self.tracer = trace.get_tracer("agent_executor")
 
     async def execute(self, query, plan):
-        
-        context = ExecutionContext(query=query)
+        with self.tracer.start_as_current_span("agent.ask") as agent_span:
+            context = ExecutionContext(query=query)
+            agent_span.set_attribute("agent.plan_steps", len(plan.steps))
+            agent_span.set_attribute("agent.plan", ", ".join(step.tool for step in plan.steps))
 
-        for step in plan.steps:
-            # For each step in the plan we get the tool and link it to the tool in ToolRegistry
-            tool = self.registry.get(step.tool)
-            # For each tool we find the list of parameters needed and get the parameter values
-            # from the execution context
-            kwargs = {parameter: context.get(parameter) for parameter in tool.parameters}
-            result = await tool.execute(**kwargs)
-            for key, value in result.items():
-                context.set(key, value)
-        # We return the last value received as the final answer
-        return value
+            for step in plan.steps:
+                # For each step in the plan we get the tool and link it to the tool in ToolRegistry
+                tool = self.registry.get(step.tool)
+                with self.tracer.start_as_current_span(f"tool.{step.tool}") as tool_span:
+                    tool_span.set_attribute("agent.step", step.tool)
+                    # For each tool we find the list of parameters needed and get the parameter
+                    # values from the execution context
+                    kwargs = {parameter: context.get(parameter) for parameter in tool.parameters}
+                    result = await tool.execute(**kwargs)
+                    for key, value in result.items():
+                        context.set(key, value)
+                # We return the last value received as the final answer
+            return value

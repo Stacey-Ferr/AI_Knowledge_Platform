@@ -2,7 +2,6 @@ from services.embedding_service import OpenAIEmbeddingService
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct, VectorParams, Distance
 from core.config import settings
-from uuid import uuid4
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from core.logging import logger
