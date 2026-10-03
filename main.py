@@ -6,6 +6,9 @@ from middleware.request_logger import RequestLoggingMiddleware
 from fastapi.responses import JSONResponse
 from core.exceptions import FileException
 from schemas.responses import ErrorResponse
+from core.tracing import setup_tracing
+
+setup_tracing()
 
 app = FastAPI()
 
