@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from schemas.llm_config import LLM_Config
 
 class Settings(BaseSettings):
     """
@@ -54,6 +55,12 @@ class Settings(BaseSettings):
 
 
     #-----------------------------------------------------------------
+    # ACTIVE LLM
+    #-----------------------------------------------------------------
+    LLM_PROVIDER: str
+
+
+    #-----------------------------------------------------------------
     # CORS
     #-----------------------------------------------------------------
     BACKEND_CORS_ORIGINS: list[str] = ["http://127.0.0.1:8000"]
@@ -87,6 +94,28 @@ class Settings(BaseSettings):
         case_sensitive = True,
         extra = "ignore"
     )
+
+    @property
+    def active_llm(self) -> LLM_Config:
+        providers = {
+            "gemini" : LLM_Config(
+                provider = "gemini",
+                model = self.GEMINI_MODEL,
+                api_key = self.GEMINI_API_KEY,
+                base_url = self.GEMINI_BASE_URL
+            ),
+            "openai" : LLM_Config(
+                provider = "openai",
+                model = self.OPENAI_MODEL,
+                api_key=self.OPENAI_API_KEY,
+                base_url=None
+            )
+        }
+
+        try:
+            return providers[self.LLM_PROVIDER]
+        except KeyError:
+            raise ValueError(f"Unsupported LLM provider: {self.LLM_PROVIDER}")
 
 
 # Creates a single cached Settings object

@@ -20,13 +20,9 @@ from core.exceptions import (
     LLMTimeoutError,
     LLMServiceUnavailableError
 )
+from dependencies.llm_client import llm_client
 
 class OpenAIProvider(BaseLLMProvider):
-    def __init__(self):
-        self.client = OpenAI(
-                        api_key=settings.GEMINI_API_KEY,
-                        base_url=settings.GEMINI_BASE_URL
-                    )
 
     @retry(
         stop = stop_after_attempt(3),
@@ -51,8 +47,8 @@ class OpenAIProvider(BaseLLMProvider):
         """
         try:
             start_time = time()
-            response = self.client.chat.completions.create(
-                model = "gemini-2.5-flash",
+            response = await llm_client.chat.completions.create(
+                model = settings.active_llm.model,
                 messages=[
                             {
                                 "role" : "system",
